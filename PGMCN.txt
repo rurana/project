@@ -1,0 +1,170 @@
+000100 IDENTIFICATION DIVISION.                                         00010000
+000200 PROGRAM-ID. PGMCN.                                               00020000
+000300 DATA DIVISION.                                                   00030000
+000400 WORKING-STORAGE SECTION.                                         00040000
+000500 01  WS-RESP-CODE      PIC S9(08) COMP VALUE ZERO.                00050000
+000600 01  PARA-TABLE                        VALUE SPACES.              00060000
+000700     03  PARA-NAME     PIC X(16) OCCURS 12 TIMES.                 00070000
+000800 01  PARA-SUB          PIC 9(02) VALUE ZERO.                      00080000
+000900 01  WS-CA.                                                       00090000
+001000     03  WS-USER-CARDNO        PIC 9(16) VALUE ZERO.              00100000
+001100     03  WS-USER-ACCNO         PIC 9(15) VALUE ZERO.              00110000
+001200     03  WS-ACC-TYPE           PIC X(07) VALUE SPACES.            00120000
+001300 01  WS-MSGC  PIC X(30) VALUE                                     00130000
+001400      'TRANSACTION CANCELLED!'.                                   00140000
+001500     COPY P26AS07.                                                00150000
+001600     COPY DFHAID.                                                 00160000
+001700     COPY DFHBMSCA.                                               00170000
+001800     COPY USERREC.                                                00180000
+001900 01  WS-VALID-FLAG            PIC X(01) VALUE 'N'.                00190000
+002000     88  VALID-DATA                     VALUE 'Y'.                00200000
+002100 LINKAGE SECTION.                                                 00210000
+002200 01  DFHCOMMAREA  PIC X(38).                                      00220000
+002300 PROCEDURE DIVISION.                                              00230000
+002400 MAIN-PARA.                                                       00240000
+002500     ADD 1 TO PARA-SUB                                            00250000
+002600     IF PARA-SUB < 13                                             00260000
+002700        MOVE 'MAIN-PARA       ' TO PARA-NAME(PARA-SUB)            00270000
+002800     END-IF                                                       00280000
+002900     IF EIBCALEN = ZERO                                           00290000
+003000        PERFORM ERROR-PARA                                        00300000
+003100     ELSE                                                         00310000
+003200        PERFORM FIRST-PARA                                        00320000
+003300        MOVE DFHCOMMAREA TO WS-CA                                 00330000
+003400        PERFORM NEXT-PARA THRU NEXT-PARA-X                        00340000
+003500     END-IF.                                                      00350000
+003600 END-PARA.                                                        00360000
+003700     ADD 1 TO PARA-SUB                                            00370000
+003800     IF PARA-SUB < 13                                             00380000
+003900       	MOVE 'END-PARA        ' TO PARA-NAME(PARA-SUB)            00390003
+004000     END-IF                                                       00400000
+004100     EXEC CICS RETURN                                             00410000
+004200         TRANSID('P26A')                                          00420001
+004300         COMMAREA(WS-CA)                                          00430000
+004400     END-EXEC.                                                    00440000
+004500                                                                  00450000
+004600 FIRST-PARA.                                                      00460000
+004700     ADD 1 TO PARA-SUB                                            00470000
+004800     IF PARA-SUB < 13                                             00480000
+004900        MOVE 'FIRST-PARA      ' TO PARA-NAME(PARA-SUB)            00490000
+005000     END-IF                                                       00500000
+005100     MOVE LOW-VALUES TO BMSCNO                                    00510000
+005200     PERFORM SEND-FIRST-MAP.                                      00520000
+005300                                                                  00530000
+005400 SEND-FIRST-MAP.                                                  00540000
+005500     ADD 1 TO PARA-SUB                                            00550000
+005600     IF PARA-SUB < 13                                             00560000
+005700        MOVE 'SEND-FIRST-MAP  ' TO PARA-NAME(PARA-SUB)            00570000
+005800     END-IF                                                       00580000
+005900     PERFORM SEND-BMSCN-MAP.                                      00590000
+006000     PERFORM PROCESS-BMSCN-PARA.                                  00600000
+006100                                                                  00610000
+006200 SEND-BMSCN-MAP.                                                  00620000
+006300     ADD 1 TO PARA-SUB                                            00630000
+006400     IF PARA-SUB < 13                                             00640000
+006500        MOVE 'SEND-BMSCN-MAP    ' TO PARA-NAME(PARA-SUB)          00650000
+006600     END-IF                                                       00660000
+006700     MOVE -1 TO CARDNOL                                           00670000
+006800     EXEC CICS SEND                                               00680000
+006900        MAP('BMSCN')                                              00690000
+007000        MAPSET('P26AS07')                                         00700000
+007100        FROM(BMSCNO)                                              00710000
+007200        CURSOR                                                    00720000
+007300        ERASE                                                     00730000
+007400     END-EXEC.                                                    00740000
+007500                                                                  00750000
+007600 NEXT-PARA.                                                       00760000
+007700     ADD 1 TO PARA-SUB                                            00770000
+007800     IF PARA-SUB < 13                                             00780000
+007900        MOVE 'NEXT-PARA       ' TO PARA-NAME(PARA-SUB)            00790000
+008000     END-IF.                                                      00800000
+008100                                                                  00810000
+008200 SEND-PARA.                                                       00820000
+008300     ADD 1 TO PARA-SUB                                            00830000
+008400     IF PARA-SUB < 13                                             00840000
+008500        MOVE 'SEND-PARA       ' TO PARA-NAME(PARA-SUB)            00850000
+008600     END-IF                                                       00860000
+008700           PERFORM SEND-BMSCN-MAP.                                00870000
+008800                                                                  00880000
+008900 NEXT-PARA-X.                                                     00890000
+009000     EXIT.                                                        00900000
+009100                                                                  00910000
+009200 PROCESS-BMSCN-PARA.                                              00920000
+009300     ADD 1 TO PARA-SUB                                            00930000
+009400     IF PARA-SUB < 13                                             00940000
+009500        MOVE 'PROC BMSCN PARA' TO PARA-NAME(PARA-SUB)             00950000
+009600     END-IF                                                       00960000
+009700     EVALUATE EIBAID                                              00970000
+009800        WHEN DFHENTER                                             00980000
+009900           PERFORM RECEIVE-PROCESS-BMSCN                          00990000
+010000        WHEN DFHPF5                                               01000000
+010100  	       EXEC CICS XCTL                                          01010000
+010200              PROGRAM('P26AP07')                                  01020002
+010300          END-EXEC                                                01030000
+010400        WHEN OTHER                                                01040000
+010500           MOVE 'INVALID KEY PRESSED' TO MSGCO                    01050000
+010600     END-EVALUATE.                                                01060000
+010700                                                                  01070000
+010800 RECEIVE-PROCESS-BMSCN.                                           01080000
+010900     ADD 1 TO PARA-SUB                                            01090000
+011000     IF PARA-SUB < 13                                             01100000
+011100         MOVE 'RCV PROC BMSCN ' TO PARA-NAME(PARA-SUB)            01110000
+011200     END-IF                                                       01120000
+011300     PERFORM RECEIVE-BMSCN-MAP                                    01130000
+011400     IF CARDNOL = ZERO OR CARDNOI = SPACES                        01140000
+011500         MOVE 'PLEASE ENTER A VALID CARD NUMBER' TO MSGCO         01150000
+011600     ELSE                                                         01160000
+011700         PERFORM READ-USER-CARDNO                                 01170000
+011800     END-IF.                                                      01180000
+011900                                                                  01190000
+012000 RECEIVE-BMSCN-MAP.                                               01200000
+012100     ADD 1 TO PARA-SUB                                            01210000
+012200     IF PARA-SUB < 13                                             01220000
+012300        MOVE 'RECEIVE KEY MAP ' TO PARA-NAME(PARA-SUB)            01230000
+012400     END-IF                                                       01240000
+012500     EXEC CICS RECEIVE                                            01250000
+012600        MAP('BMSCN')                                              01260000
+012700        MAPSET('P26AS07')                                         01270000
+012800        INTO(BMSCNI)                                              01280000
+012900     END-EXEC.                                                    01290000
+013000                                                                  01300000
+013100 READ-USER-CARDNO.                                                01310000
+013200     ADD 1 TO PARA-SUB                                            01320000
+013300     IF PARA-SUB < 13                                             01330000
+013400        MOVE 'READ USER CARDNO' TO PARA-NAME(PARA-SUB)            01340000
+013500     END-IF                                                       01350000
+013600     MOVE CARDNOI TO WS-USER-CARDNO                               01360000
+013700     EXEC CICS READ                                               01370000
+013800        FILE('P26FFILE')                                          01380000
+013900        RIDFLD(WS-USER-CARDNO)                                    01390000
+014000        INTO(USER-RECORD)                                         01400000
+014100        RESP(WS-RESP-CODE)                                        01410000
+014200     END-EXEC.                                                    01420000
+014300     EVALUATE WS-RESP-CODE                                        01430000
+014400        WHEN DFHRESP(NORMAL)                                      01440000
+014500*           MOVE USER-NAME    TO BNAMEO                           01450000
+014600            MOVE USER-ACCNO   TO BACCNOO                          01460000
+014700*           MOVE USER-CARDNO  TO BCARDNOO                         01470000
+014800*           MOVE USER-TYPE    TO BTYPEO                           01480000
+014900*           MOVE USER-AMT     TO BAMTO                            01490000
+015000*           MOVE USER-DATE    TO BDATEO                           01500000
+015100*           MOVE USER-BAL     TO BBALO                            01510000
+015200            MOVE USER-ACCNO  TO WS-USER-ACCNO                     01520000
+015300            PERFORM TRANSFER-PARA                                 01530000
+015400        WHEN DFHRESP(NOTFND)                                      01540000
+015500            MOVE -1           TO CARDNOL                          01550000
+015600 	          MOVE 'ENTER VALID CARD NUMBER' TO MSGCO               01560000
+015700        WHEN OTHER                                                01570000
+015800           MOVE 'ERROR PROCESSING FILE' TO MSGCO                  01580000
+015900     END-EVALUATE.                                                01590000
+016000 TRANSFER-PARA.                                                   01600000
+016100      EXEC CICS XCTL                                              01610000
+016200           PROGRAM('PGMPIN') COMMAREA(WS-CA)                      01620000
+016300      END-EXEC.                                                   01630000
+016400 ERROR-PARA.                                                      01640000
+016500*     EXEC CICS SEND                                              01650000
+016600*      TEXT ('THIS SERVICE IS NOT AVAILABLE ')                    01660000
+016700*      END-EXEC                                                   01670000
+016800      EXEC CICS XCTL                                              01680000
+016900           PROGRAM('P26AP07')                                     01690002
+017000      END-EXEC.                                                   01700000

@@ -1,0 +1,59 @@
+﻿HOME     DFHMSD TYPE=&SYSPARM,                                         C
+               CTRL=(FREEKB),                                          C
+               LANG=COBOL,                                             C
+               MODE=INOUT,                                             C
+               STORAGE=AUTO,                                           C
+               TIOAPFX=YES
+BMSHOM   DFHMDI SIZE=(24,80)
+         DFHMDF ATTRB=(PROT,BRT),                                      C
+               COLOR=TURQUOISE,                                        C
+               INITIAL='***********************************************C
+               *******************************',                       C
+               LENGTH=78,                                              C
+               POS=(1,1)
+         DFHMDF ATTRB=(PROT,BRT),                                      C
+               COLOR=RED,                                              C
+               INITIAL='CAPGEMINI BANK',                               C
+               LENGTH=14,                                              C
+               POS=(2,33)
+         DFHMDF ATTRB=(PROT,BRT),                                      C
+               COLOR=TURQUOISE,                                        C
+               INITIAL='***********************************************C
+               *******************************',                       C
+               LENGTH=78,                                              C
+               POS=(3,1)
+         DFHMDF ATTRB=(PROT,DRK),                                      C
+               INITIAL='WELCOME TO CAPGEMINI BANK',                    C
+               LENGTH=25,                                              C
+               POS=(10,27)
+         DFHMDF ATTRB=(PROT,BRT),                                      C
+               COLOR=TURQUOISE,                                        C
+               INITIAL='***********************************************C
+               *******************************',                       C
+               LENGTH=78,                                              C
+               POS=(21,1)
+         DFHMDF ATTRB=(PROT,BRT),                                      C
+               INITIAL='MESSAGE :',                                    C
+               LENGTH=9,                                               C
+               POS=(22,1)
+MESSAGE  DFHMDF ATTRB=(PROT,BRT),                                      C
+               COLOR=RED,                                              C
+               INITIAL='                              ',               C
+               LENGTH=30,                                              C
+               POS=(22,11)
+         DFHMDF ATTRB=(PROT,BRT),                                      C
+               INITIAL='ESC:CANCEL;',                                  C
+               LENGTH=11,                                              C
+               POS=(23,38)
+         DFHMDF ATTRB=(PROT,BRT),                                      C
+               INITIAL='ENTER:PROCESS',                                C
+               LENGTH=13,                                              C
+               POS=(23,61)
+         DFHMDF ATTRB=(PROT,BRT),                                      C
+               COLOR=TURQUOISE,                                        C
+               INITIAL='***********************************************C
+               *******************************',                       C
+               LENGTH=78,                                              C
+               POS=(24,1)
+         DFHMSD TYPE=FINAL
+         END

@@ -1,0 +1,94 @@
+000100  IDENTIFICATION DIVISION.                                        00010000
+000200  PROGRAM-ID. PGMBEQ.                                             00020000
+000300  DATA DIVISION.                                                  00030000
+000400  WORKING-STORAGE SECTION.                                        00040000
+000500  01 WS-CA.                                                       00050000
+000600     03  WS-USER-CARDNO        PIC 9(16) VALUE ZERO.              00060000
+000700     03  WS-USER-ACCNO         PIC 9(15) VALUE ZERO.              00070000
+000800     03  WS-ACC-TYPE           PIC X(07) VALUE SPACES.            00080000
+000900  01 WS-CARDNO         PIC 9(16) VALUE ZERO.                      00090000
+001000  01 WS-DATE-TIME             PIC S9(15) COMP-3 VALUE ZERO.       00100000
+001100         COPY USERREC.                                            00110000
+001200         COPY P26AS07.                                            00120000
+001300         COPY DFHAID.                                             00130000
+001400 LINKAGE SECTION.                                                 00140000
+001500 01 DFHCOMMAREA   PIC X(38).                                      00150000
+001600 PROCEDURE DIVISION.                                              00160000
+001700 MAIN-PARA.                                                       00170000
+001800        IF EIBCALEN = ZERO                                        00180000
+001900             PERFORM ERROR-PARA                                   00190000
+002000        ELSE                                                      00200000
+002100             PERFORM SEND-MAP-PARA                                00210000
+002200        END-IF.                                                   00220000
+002300 END-PARA.                                                        00230000
+002400        EXEC CICS RETURN                                          00240000
+002500             TRANSID('P26F')                                      00250000
+002600             COMMAREA(WS-CA)                                      00260000
+002700        END-EXEC.                                                 00270000
+002800 SEND-MAP-PARA.                                                   00280000
+002900        EXEC CICS SEND                                            00290000
+003000             MAP('BMSBEQ')                                        00300000
+003100             MAPSET('P26AS07')                                    00310000
+003200             FROM(BMSBEQO)                                        00320000
+003300             ERASE                                                00330000
+003400        END-EXEC                                                  00340000
+003500        PERFORM READ-FILE                                         00350000
+003600        PERFORM RESPONSE-PARA.                                    00360000
+003700 READ-FILE.                                                       00370000
+003800        MOVE WS-USER-CARDNO TO WS-CARDNO                          00380000
+003900        EXEC CICS READ                                            00390000
+004000           FILE('P26FFILE')                                       00400000
+004100           RIDFLD(WS-CARDNO)                                      00410000
+004200           INTO(USER-REC)                                         00420000
+004300           RESP(WS-RESP-CODE)                                     00430000
+004400        END-EXEC                                                  00440000
+004500        EVALUATE WS-RESP-CODE                                     00450000
+004600           WHEN DFHRESP(NORMAL)                                   00460000
+004700                PERFORM MOVE-PARA                                 00470000
+004800           WHEN DFHRESP(NOTFND)                                   00480000
+004900                MOVE 'FILE NOT FOUND'  TO MSGBO                   00490000
+005000           WHEN OTHER                                             00500000
+005100                MOVE 'ERROR ACCESSING FILE' TO MSGBO              00510000
+005200        END-EVALUATE.                                             00520000
+005300 MOVE-PARA.                                                       00530000
+005400        MOVE ACC-NO    TO BACCNOO                                 00540000
+005500        MOVE CARDNO    TO BCARDNOO                                00550000
+005600        MOVE NAME      TO BNAMEO                                  00560000
+005700        MOVE CARDTYPE  TO BTYPEO                                  00570000
+005800        MOVE AMOUNT    TO BAMTO                                   00580000
+005900        PERFORM DATE-TIME-PARA                                    00590000
+006000        MOVE BALANCE   TO BBALO                                   00600000
+006100 RESPONSE-PARA.                                                   00610000
+006200        EVALUATE EIBAID                                           00620000
+006300        WHEN DFHENTER                                             00630000
+006400             EXEC CICS XCTL                                       00640000
+006500                  PROGRAM('PGMTY')                                00650000
+006600             END-EXEC.                                            00660000
+006700        WHEN DFHPF5                                               00670000
+006800             EXEC CICS XCTL                                       00680000
+006900                  PROGRAM('P26AP07')                              00690000
+007000             END-EXEC                                             00700000
+007100        WHEN DFHPF3                                               00710000
+007200             EXEC CICS XCTL                                       00720000
+007300                  PROGRAM('PGMMEN')                               00730000
+007400             END-EXEC                                             00740000
+007500        WHEN OTHER                                                00750000
+007600             MOVE 'INVALID KEY PRESSED' TO MSGBO                  00760000
+007700        END-EVALUATE.                                             00770000
+007800 DATE-TIME-PARA.                                                  00780000
+007900        ADD 1 TO PARA-SUB                                         00790000
+008000        IF PARA-SUB < 13                                          00800000
+008100             MOVE 'DATE-TIME-PARA   ' TO PARA-NAME(PARA-SUB)      00810000
+008200        END-IF                                                    00820000
+008300        EXEC CICS ASKTIME                                         00830000
+008400             ABSTIME(WS-DATE-TIME)                                00840000
+008500        END-EXEC.                                                 00850000
+008600        EXEC CICS FORMATTIME                                      00860000
+008700             ABSTIME(WS-DATE-TIME)                                00870000
+008800             DDMMYYYY(BDATEO)                                     00880000
+008900             DATESEP                                              00890000
+009000        END-EXEC.                                                 00900000
+009100 ERROR-PARA.                                                      00910000
+009200      EXEC CICS XCTL                                              00920000
+009300           PROGRAM('PGMHOM')                                      00930000
+009400      END-EXEC.                                                   00940000

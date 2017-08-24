@@ -1,0 +1,8 @@
+       01  USER-RECORD.                        
+           03  USER-CARDO       PIC X(16).     
+           03  USER-ACCNO       PIC X(15).     
+           03  USER-NAME        PIC X(15).     
+           03  USER-DOB         PIC X(08).     
+           03  USER-TECH        PIC X(05).     
+           03  USER-EARN        PIC 9(05)V99.  
+           03  USER-DEDN        PIC 9(05)V99.  

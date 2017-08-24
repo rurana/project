@@ -1,0 +1,141 @@
+000100  IDENTIFICATION DIVISION.                                        00010000
+000200  PROGRAM-ID. PGMDEP.                                             00020000
+000300  DATA DIVISION.                                                  00030000
+000400  WORKING-STORAGE SECTION.                                        00040000
+000500  01  WS-RESP-CODE      PIC S9(08) COMP VALUE ZERO.               00050000
+000600  01  PARA-TABLE                        VALUE SPACES.             00060000
+000700      03  PARA-NAME     PIC X(16) OCCURS 12 TIMES.                00070000
+000800  01  PARA-SUB          PIC 9(02) VALUE ZERO.                     00080000
+000900  01 WS-CA.                                                       00090000
+001000     03  WS-USER-CARDNO        PIC 9(16) VALUE ZERO.              00100000
+001100     03  WS-USER-ACCNO         PIC 9(15) VALUE ZERO.              00110000
+001200     03  WS-ACC-TYPE           PIC X(07) VALUE SPACES.            00120000
+001300  01  WS-USER-AMT 	      PIC 9(05) VALUE ZEROS.                   00130000
+001400  01  WS-USER-BAL 	      PIC 9(07) VALUE ZEROS.                   00140000
+001500     COPY P26AS07.                                                00150000
+001600     COPY DFHAID.                                                 00160000
+001700     COPY USERREC.                                                00170000
+001800  01  WS-DATE-TIME             PIC S9(15) COMP-3 VALUE ZERO.      00180000
+001900  01  WS-VALID-FLAG            PIC X(01) VALUE 'N'.               00190000
+002000      88  VALID-DATA                     VALUE 'Y'.               00200000
+002100  01  WS-MSGW  PIC X(30) VALUE                                    00210000
+002200      'TRANSACTION CANCELLED!'.                                   00220000
+002300 LINKAGE SECTION.                                                 00230000
+002400  01  DFHCOMMAREA  PIC X(38).                                     00240000
+002500 PROCEDURE DIVISION.                                              00250000
+002600 MAIN-PARA.                                                       00260000
+002700      IF EIBCALEN = ZERO                                          00270000
+002800          PERFORM ERROR-PARA                                      00280000
+002900      ELSE                                                        00290000
+003000          MOVE DFHCOMMAREA TO WS-CA                               00300000
+003100          PERFORM SEND-AMOUNT-MAP                                 00310000
+003200      END-IF.                                                     00320000
+003300 END-PARA.                                                        00330000
+003400      EXEC CICS RETURN                                            00340000
+003500          TRANSID('P26F')                                         00350000
+003600          COMMAREA(WS-CA)                                         00360000
+003700      END-EXEC.                                                   00370000
+003800 SEND-AMOUNT-MAP.                                                 00380000
+003900      MOVE LOW-VALUES TO BMSAMT                                   00390000
+004000      EXEC CICS SEND                                              00400000
+004100          MAP('BMSAMT')                                           00410000
+004200          MAPSET('P26AS07')                                       00420000
+004300          FROM(BMSAMTO)                                           00430000
+004400          ERASE                                                   00440000
+004500      END-EXEC.                                                   00450000
+004600      EVALUATE EIBAID                                             00460000
+004700      WHEN DFHPF5                                                 00470000
+004800          EXEC CICS XCTL                                          00480000
+004900              PROGRAM('P26AP07')                                  00490000
+005000          END-EXEC                                                00500000
+005100      WHEN DFHPF3                                                 00510000
+005200          EXEC CICS XCTL                                          00520000
+005300              PROGRAM('PGMMEN')                                   00530000
+005400          END-EXEC                                                00540000
+005500      WHEN DFHENTER                                               00550000
+005600          PERFORM PROCESS-PARA                                    00560000
+005700      WHEN OTHER                                                  00570000
+005800             MOVE 'INVALID KEY PRESSED' TO MSGWO                  00580000
+005900      END-EVALUATE.                                               00590000
+006000 PROCESS-PARA.                                                    00600000
+006100      PERFORM RECEIVE-AMOUNT-MAP                                  00610000
+006200      IF AMTL = ZERO OR AMTI = SPACES                             00620000
+006300          MOVE 'PLEASE ENTER SOME AMOUNT' TO MSGWO                00630000
+006400 	    ELSE                                                        00640000
+006500 	        MOVE AMTI TO WS-USER-AMT                                00650000
+006600          PERFORM READ-USER                                       00660000
+006700      END-IF.                                                     00670000
+006800 READ-USER.                                                       00680000
+006900     ADD 1 TO PARA-SUB                                            00690000
+007000     IF PARA-SUB < 13                                             00700000
+007100        MOVE 'READ USER      ' TO PARA-NAME(PARA-SUB)             00710000
+007200     END-IF                                                       00720000
+007300     MOVE CARDNOI TO WS-USER-CARDNO                               00730000
+007400     EXEC CICS READ                                               00740000
+007500 	       FILE('P26FFILE')                                         00750000
+007600 	       RIDFLD(WS-USER-CARDNO)                                   00760000
+007700 	       INTO(USER-RECORD)                                        00770000
+007800 	       RESP(WS-RESP-CODE)                                       00780000
+007900 	       UPDATE                                                   00790000
+008000     END-EXEC                                                     00800000
+008100     EVALUATE WS-RESP-CODE                                        00810000
+008200 	   WHEN DFHRESP(NORMAL)                                         00820000
+008300 	       PERFORM RECEIVE-AMOUNT-MAP                               00830000
+008400 	       PERFORM MOVE-PARA                                        00840000
+008500 	       EXEC CICS REWRITE                                        00850000
+008600 		         FILE('P26FFILE')                                      00860000
+008700 		         FROM(USER-RECORD)                                     00870000
+008800 		         RESP(WS-RESP-CODE)                                    00880000
+008900 	       END-EXEC                                                 00890000
+009000 	       EVALUATE WS-RESP-CODE                                    00900000
+009100 		      WHEN DFHRESP(NORMAL)                                     00910000
+009200 		          MOVE 'CASH DEPOSITED' TO MSGWO                       00920000
+009300 		      WHEN OTHER                                               00930000
+009400 		          MOVE 'CASH DEPOSIT UNSUCCESSFUL' TO MSGWO            00940000
+009500 	       END-EVALUATE                                             00950000
+009600 	   WHEN OTHER                                                   00960000
+009700 	       MOVE 'ERROR PROCESSING FILE' TO MSGWO                    00970000
+009800     END-EVALUATE                                                 00980000
+009900     SET PROCESS-AMTMAP TO TRUE                                   00990000
+010000     MOVE WS-USER-AMT TO AMTO.                                    01000000
+010100 RECEIVE-AMOUNT-MAP.                                              01010000
+010200     ADD 1 TO PARA-SUB                                            01020000
+010300     IF PARA-SUB < 13                                             01030000
+010400 	       MOVE 'RECEIVE-MAP     ' TO PARA-NAME(PARA-SUB)           01040000
+010500     END-IF                                                       01050000
+010600     EXEC CICS RECEIVE                                            01060000
+010700          MAP('BMSAMT')                                           01070000
+010800          MAPSET('P26AS07')                                       01080000
+010900          INTO(BMSAMTI)                                           01090000
+011000     END-EXEC.                                                    01100000
+011100 MOVE-PARA.                                                       01110000
+011200     ADD 1 TO PARA-SUB                                            01120000
+011300     IF PARA-SUB < 13                                             01130000
+011400 	       MOVE 'MOVE-PARA       ' TO PARA-NAME(PARA-SUB)           01140000
+011500     END-IF                                                       01150000
+011600         ADD WS-USER-AMT TO USER-BAL GIVING WS-USER-BAL           01160000
+011700         MOVE USER-NAME    TO USER-NAME                           01170000
+011800         MOVE USER-ACCNO   TO USER-ACCNO                          01180000
+011900         MOVE USER-CARDNO  TO USER-CARDNO                         01190000
+012000         MOVE USER-TYPE    TO USER-TYPE                           01200000
+012100         MOVE USER-AMT     TO USER-AMT                            01210000
+012200         PERFORM DATE-TIME-PARA                                   01220000
+012300         MOVE WS-USER-BAL     TO USER-BAL .                       01230000
+012400 DATE-TIME-PARA.                                                  01240000
+012500     ADD 1 TO PARA-SUB                                            01250000
+012600     IF PARA-SUB < 13                                             01260000
+012700 	      MOVE 'DATE-TIME-PARA  ' TO PARA-NAME(PARA-SUB)            01270000
+012800     END-IF                                                       01280000
+012900     EXEC CICS ASKTIME                                            01290000
+013000 	       ABSTIME(WS-DATE-TIME)                                    01300000
+013100     END-EXEC                                                     01310000
+013200     EXEC CICS FORMATTIME                                         01320000
+013300 	       ABSTIME(WS-DATE-TIME)                                    01330000
+013400 	       DDMMYYYY(MDATEO)                                         01340000
+013500 	       DATESEP                                                  01350000
+013600     END-EXEC                                                     01360000
+013700     MOVE MDATEO TO USER-DATE.                                    01370000
+013800 ERROR-PARA.                                                      01380000
+013900      EXEC CICS XCTL                                              01390000
+014000           PROGRAM('P26AP07')                                     01400000
+014100      END-EXEC.                                                   01410000

@@ -1,0 +1,53 @@
+000100 IDENTIFICATION DIVISION.                                         00010000
+000200 PROGRAM-ID. P26AP07.                                             00020002
+000300 DATA DIVISION.                                                   00030000
+000400 WORKING-STORAGE SECTION.                                         00040000
+000500*DEFINE VARIABLES HERE                                            00050000
+000600 01  WS-MESSAGE          PIC X(30) VALUE                          00060000
+000700      'TRANSACTION ENDED'.                                        00070000
+000800     COPY P26AS07.                                                00080000
+000900     COPY DFHAID.                                                 00090000
+001000     COPY DFHBMSCA.                                               00100000
+001100 PROCEDURE DIVISION.                                              00110000
+001200 MAIN-PARA.                                                       00120000
+001300*    IF EIBCALEN = ZERO                                           00130000
+001400        PERFORM SEND-HOME-MAP.                                    00140001
+001500*    ELSE                                                         00150000
+001600*       PERFORM ERROR-PARA                                        00160000
+001700*    END-IF.                                                      00170000
+001800 END-PARA.                                                        00180000
+001900     EXEC CICS RETURN                                             00190000
+002000         TRANSID('P26G')                                          00200003
+002100     END-EXEC.                                                    00210000
+002200*SHOW-HOME-PARA.                                                  00220000
+002300*    PERFORM SEND-HOME-MAP.                                       00230000
+002400 SEND-HOME-MAP.                                                   00240000
+002500     EXEC CICS SEND                                               00250000
+002600         MAP('BMSHOM')                                            00260000
+002700         MAPSET('P26AS07')                                        00270000
+002800         FROM(BMSHOMO)                                            00280000
+002900         ERASE                                                    00290000
+003000     END-EXEC                                                     00300000
+003100     MOVE LOW VALUES TO BMSHOMO                                   00310003
+003200* CHECK ENTERED KEY                                               00320000
+003300     PERFORM RESPONSE-PARA.                                       00330000
+003400 RESPONSE-PARA.                                                   00340001
+003500     EVALUATE EIBAID                                              00350000
+003600     WHEN DFHPF1                                                  00360000
+003700* ENDING THE PROGRAM                                              00370000
+003800         EXEC CICS SEND TEXT                                      00380000
+003900             FROM(WS-MESSAGE)                                     00390000
+004000             ERASE                                                00400000
+004100         END-EXEC                                                 00410000
+004200         EXEC CICS RETURN                                         00420000
+004300         END-EXEC                                                 00430001
+004400     WHEN DFHENTER                                                00440000
+004500* GO TO NEXT PAGE(ACCEPT ACCOUNT NUMBER)                          00450000
+004600         PERFORM NEXT-PARA                                        00460000
+004700     WHEN OTHER                                                   00470000
+004800         MOVE 'PLEASE ENTER VALID KEY TO CONTINUE' TO MSGHO       00480001
+004900     END-EVALUATE.                                                00490000
+005000 NEXT-PARA.                                                       00500000
+005100     EXEC CICS XCTL                                               00510000
+005200         PROGRAM('PGMCN')                                         00520000
+005300     END-EXEC.                                                    00530000

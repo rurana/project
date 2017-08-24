@@ -1,0 +1,447 @@
+*NAME  DEPOSIT
+ IDENTIFICATION DIVISION.
+ PROGRAM-ID. DEPOSIT.
+ DATA DIVISION.
+ WORKING-STORAGE SECTION.
+ 01  WS-RESP-CODE            PIC S9(08) COMP.
+ 01  WS-TABLE.
+     03  WS-TAB           PIC X(16) OCCURS 12 TIMES.
+ 01  WS-RESP-CODE1           PIC S9(08) COMP.
+ 01  WS-CA.
+     03  WS-PROCESS-FLAG     PIC X(01) VALUE SPACES.
+         88  PROCESS-KEY            VALUE '1'.
+         88  PROCESS-ADD               VALUE '2'.
+         88  PROCESS-UPD-DEL           VALUE '3'.
+         88  PRCOESS-DET            VALUE '2', '3'.
+     03  WS-ID               PIC X(05).
+
+ 01  WS-SUB              PIC 9(02) VALUE ZERO.
+ 01  WS-USER-ID           PIC X(05) VALUE SPACES.
+
+ 01  WS-DATE-TIME            PIC S9(15) COMP-3 VALUE ZERO.
+ 01  WS-DOB.
+     03  WS-YY               PIC 9(04) VALUE ZERO.
+     03  WS-MM               PIC 9(02) VALUE ZERO.
+     03  WS-DD               PIC 9(02) VALUE ZERO.
+
+ 01  WS-EARN                 PIC ZZ,ZZ9.99 VALUE ZERO.
+ 01  WS-DEDN                 PIC ZZ,ZZ9.99 VALUE ZERO.
+ 01  WS-SAL-O                PIC ZZ,ZZ9.99 VALUE ZERO.
+ 01  WS-SAL                  PIC 9(05)V99 VALUE ZERO.
+
+ 01  WS-AMOUNT               PIC 9(05)V99 VALUE ZERO.
+
+ 01  FILLER  REDEFINES  WS-AMOUNT.
+     03  WS-RS                PIC 9(05).
+     03  WS-PS                PIC 9(02).
+
+ 01  WS-VALID-FLAG            PIC X(01) VALUE 'N'.
+     88  VALID-DATA                     VALUE 'Y'.
+
+     COPY P26AS04.
+     COPY DFHAID.
+     COPY DFHBMSCA.
+*     COPY USERREC.
+ 01  USER-RECORD.
+     03  USER-ACC-NO		PIC 9(15) VALUE ZEROS.
+     03  USER-CARD-NO		PIC 9(16) VALUE ZEROS.
+     03  USER-PIN		PIC 9(04) VALUE ZEROS.
+     03  USER-NAME 		PIC X(15) VALUE SPACES.
+     03  USER-ACC-TYPE		PIC X(07).
+  	 88  SAVINGS 			  VALUE 'SAVINGS'.
+	 88  CURRENT 			  VALUE 'CURRENT'. 
+
+ 01  TRANSACTION-RECORD.
+     03  TRANS-ACC-NO		PIC 9(15) VALUE ZEROS.
+     03  TRANS-ACC-TYPE		PIC X(07).
+  	 88  SAVINGS 			  VALUE 'SAVINGS'.
+	 88  CURRENT 			  VALUE 'CURRENT'. 
+     03  TRANS-AMOUNT		PIC 9(05) VALUE ZEROS.
+     03  TRANS-DATE		PIC X(10) VALUE SPACES.	
+     03  TRANS-BALANCE		PIC 9(07) VALUE ZEROS.
+
+ LINKAGE SECTION.
+ 01  DFHCOMMAREA  PIC X(06).
+
+**************************************************************
+
+ PROCEDURE DIVISION.
+ MAIN-PARA.
+     ADD 1 TO WS-SUB
+         IF WS-SUB < 13
+             MOVE 'MAIN PARA       ' TO WS-TAB(WS-SUB)
+         END-IF.
+     IF EIBCALEN = ZERO
+*       PERFORM SEND-MAP1
+        PERFORM FIRST-PARA
+     ELSE
+        MOVE DFHCOMMAREA TO WS-CA
+        PERFORM NEXT-PARA THRU NEXT-PARA-X
+     END-IF.
+
+ END-PARA.
+     ADD 1 TO WS-SUB
+         IF WS-SUB < 13
+             MOVE 'END PARA        ' TO WS-TAB(WS-SUB)
+         END-IF.
+     EXEC CICS RETURN
+          TRANSID('P26D')
+          COMMAREA(WS-CA)
+     END-EXEC.
+
+ MAIN-MAP.
+     ADD 1 TO WS-SUB
+         IF WS-SUB < 1
+             MOVE 'MAIN MAP        ' TO WS-TAB(WS-SUB)
+         END-IF.
+     EVALUATE EIBAID
+        WHEN DFHENTER
+           PERFORM RECEIVE-PROCESS-KEY
+        WHEN DFHPF3
+           EXEC CICS XCTL
+              PROGRAM('P26AP02')
+           END-EXEC
+        WHEN OTHER
+           MOVE 'INVALID KEY PRESSED' TO MSGO
+     END-EVALUATE.
+
+ FIRST-PARA.
+     ADD 1 TO WS-SUB
+         IF WS-SUB < 13
+             MOVE 'FIRST PARA      ' TO WS-TAB(WS-SUB)
+         END-IF.
+     MOVE LOW-VALUES TO FSTMAPO
+     PERFORM SEND-MAP1-PARA.
+
+ SEND-MAP1-PARA.
+     ADD 1 TO WS-SUB
+         IF WS-SUB < 13
+             MOVE 'MAP1-PARA       ' TO WS-TAB(WS-SUB)
+         END-IF.
+     PERFORM DATE-TIME-PARA.
+     PERFORM SEND-MAP1.
+     SET PROCESS-KEY TO TRUE.
+
+ SEND-MAP1.
+     ADD 1 TO WS-SUB
+         IF WS-SUB < 13
+             MOVE 'SEND-MAP1       ' TO WS-TAB(WS-SUB)
+         END-IF.
+     MOVE -1 TO ID1L
+     EXEC CICS SEND
+         MAP('FSTMAP') MAPSET('P26AS04')
+         FROM(FSTMAPO) CURSOR ERASE
+     END-EXEC.
+
+ NEXT-PARA.
+     ADD 1 TO WS-SUB
+         IF WS-SUB < 13
+             MOVE 'NEXT PARA       ' TO WS-TAB(WS-SUB)
+         END-IF.
+     EVALUATE TRUE
+        WHEN PROCESS-KEY
+           PERFORM MAIN-MAP
+        WHEN PRCOESS-DET
+           PERFORM DETAIL-PARA
+     END-EVALUATE.
+
+ SEND-PARA.
+     ADD 1 TO WS-SUB
+         IF WS-SUB < 13
+             MOVE 'SEND PARA       ' TO WS-TAB(WS-SUB)
+         END-IF.
+     EVALUATE TRUE
+        WHEN PROCESS-KEY
+           PERFORM SEND-MAP1
+        WHEN PRCOESS-DET
+           PERFORM SEND-MAP2
+     END-EVALUATE.
+
+ NEXT-PARA-X.
+     EXIT.
+
+ RECEIVE-PROCESS-KEY.
+     ADD 1 TO WS-SUB
+         IF WS-SUB < 13
+             MOVE 'REC-PRO-KEY     ' TO WS-TAB(WS-SUB)
+         END-IF.
+     PERFORM RECEIVE-MAP1
+     IF ID1L = ZERO OR ID1I = SPACES
+        MOVE 'PLEASE ENTER AN USER ID' TO MSGO
+     ELSE
+        PERFORM READ-PARA
+     END-IF.
+
+ RECEIVE-MAP1.
+     ADD 1 TO WS-SUB
+         IF WS-SUB < 13
+             MOVE 'RECEIVE MAP 1   ' TO WS-TAB(WS-SUB)
+         END-IF.
+     EXEC CICS RECEIVE
+         MAP('FSTMAP') MAPSET('P26AS04')
+         INTO(FSTMAPI)
+     END-EXEC.
+*    PERFORM ID-CHECK-PARA.
+
+*ID-CHECK-PARA.
+*    ADD 1 TO WS-SUB
+*        IF WS-SUB < 13
+*            MOVE 'ID CHECK PARA   ' TO WS-TAB(WS-SUB)
+*        END-IF.
+*    PERFORM RECEIVE-MAP1
+*    IF ID1L = ZERO
+*        MOVE 'PLEASE ENTER AN USER ID' TO MSGO
+*    ELSE
+*        IF ID1I = SPACES
+*           MOVE 'PLEASE ENTER A VALID USER ID' TO MSGO
+*        ELSE
+*           PERFORM READ-PARA
+*        END-IF
+*    END-IF.
+
+ READ-PARA.
+     ADD 1 TO WS-SUB
+         IF WS-SUB < 13
+             MOVE 'READ PARA       ' TO WS-TAB(WS-SUB)
+         END-IF.
+     MOVE LOW-VALUES TO SECMAPO
+     MOVE ID1I TO WS-USER-ID, EIDO
+     EXEC CICS READ
+         FILE('P26AFILE') RIDFLD(WS-USER-ID)
+         INTO(USER-RECORD) RESP(WS-RESP-CODE)
+     END-EXEC.
+     EVALUATE WS-RESP-CODE
+         WHEN DFHRESP(NORMAL)
+            MOVE USER-NAME  TO NAMEO
+            MOVE USER-LOC   TO LOCO
+            MOVE USER-TECH  TO TECHO
+            MOVE USER-DOB(1:4) TO DOBYYO
+            MOVE USER-DOB(5:2) TO DOBMMO
+            MOVE USER-DOB(7:2) TO DOBDDO
+            MOVE USER-EARN  TO WS-AMOUNT
+            MOVE WS-RS TO EARNRSO
+            MOVE WS-PS TO EARNPSO
+            MOVE USER-DEDN  TO WS-AMOUNT
+            MOVE WS-RS TO DEDNRSO
+            MOVE WS-PS TO DEDNPSO
+            COMPUTE WS-SAL = USER-EARN - USER-DEDN
+            MOVE WS-SAL    TO WS-SAL-O
+            MOVE WS-SAL-O TO SALO
+            MOVE 'UPDATE / DELETE' TO MODEO
+            MOVE -1                TO NAMEL
+            SET PROCESS-UPD-DEL TO TRUE
+            MOVE DFHBMDAR TO PF1A
+            MOVE DFHBMPRO TO PF4A
+            MOVE DFHBMPRO TO PF5A
+         WHEN DFHRESP(NOTFND)
+            MOVE -1                TO NAMEL
+            MOVE SPACES TO NAMEO, LOCO, TECHO,
+                 DOBYYO, DOBMMO, DOBDDO, SALO,
+                 EARNRSO, EARNPSO, DEDNRSO, DEDNPSO
+            MOVE 'ADD USER'  TO MODEO
+            SET PROCESS-ADD TO TRUE
+            MOVE DFHBMPRO TO PF1A
+            MOVE DFHBMDAR TO PF4A
+            MOVE DFHBMDAR TO PF5A
+         WHEN OTHER
+            MOVE 'ERROR PROCESSING FILE' TO MSGO
+     END-EVALUATE.
+
+ SEND-MAP2.
+     ADD 1 TO WS-SUB
+         IF WS-SUB < 13
+             MOVE 'SEND-MAP2       ' TO WS-TAB(WS-SUB)
+         END-IF.
+     PERFORM DATE-TIME-PARA.
+     EXEC CICS SEND
+         MAP('SECMAP') MAPSET('P26AS04')
+         FROM(SECMAPO) CURSOR ERASE
+     END-EXEC.
+
+ DETAIL-PARA.
+     ADD 1 TO WS-SUB
+         IF WS-SUB < 13
+             MOVE 'DETAIL          ' TO WS-TAB(WS-SUB)
+         END-IF.
+     EVALUATE EIBAID
+         WHEN DFHPF1
+            IF PROCESS-ADD
+               PERFORM ADD-PARA
+            ELSE
+               MOVE 'PF1 NOT ENABLED' TO MESSAGEO
+            END-IF
+         WHEN DFHPF3
+            SET PROCESS-KEY TO TRUE
+         WHEN DFHPF4
+            IF PROCESS-UPD-DEL
+               PERFORM UPDATE-PARA
+            ELSE
+               MOVE 'PF4 NOT ENABLED' TO MESSAGEO
+            END-IF
+         WHEN DFHPF5
+            IF PROCESS-UPD-DEL
+               PERFORM DELETE-PARA
+            ELSE
+               MOVE 'PF5 NOT ENABLED' TO MESSAGEO
+            END-IF
+         WHEN OTHER
+            MOVE 'INVALID KEY PRESSED' TO MESSAGEO
+     END-EVALUATE.
+
+ RECEIVE-MAP2.
+     ADD 1 TO WS-SUB
+         IF WS-SUB < 13
+             MOVE 'REC-MAP2        ' TO WS-TAB(WS-SUB)
+         END-IF.
+     EXEC CICS RECEIVE
+         MAP('SECMAP') MAPSET('P26AS04')
+         INTO(SECMAPI)
+     END-EXEC.
+
+ DELETE-PARA.
+      ADD 1 TO WS-SUB
+         IF WS-SUB < 13
+             MOVE 'DELETE          ' TO WS-TAB(WS-SUB)
+         END-IF.
+      MOVE ID1I TO WS-USER-ID
+     EXEC CICS DELETE
+         FILE('P26AFILE') RIDFLD(WS-USER-ID)
+         RESP(WS-RESP-CODE)
+     END-EXEC
+     EVALUATE WS-RESP-CODE
+         WHEN DFHRESP(NORMAL)
+            MOVE 'DELETE SUCCESSFUL' TO MSGO
+         WHEN OTHER
+            MOVE 'DELETE NOT SUCCESSFUL' TO MSGO
+     END-EVALUATE
+     SET PROCESS-KEY TO TRUE
+     MOVE WS-USER-ID TO ID1O.
+
+ ADD-PARA.
+     ADD 1 TO WS-SUB
+         IF WS-SUB < 13
+             MOVE 'ADD PARA        ' TO WS-TAB(WS-SUB)
+         END-IF.
+     PERFORM RECEIVE-MAP2
+     PERFORM VALIDATE-PARA
+     IF VALID-DATA
+        PERFORM MOVE-PARA
+        PERFORM WRITE-PARA
+     END-IF.
+
+ WRITE-PARA.
+      ADD 1 TO WS-SUB
+         IF WS-SUB < 13
+             MOVE 'WRITE           ' TO WS-TAB(WS-SUB)
+         END-IF.
+     EXEC CICS WRITE
+         FILE('P26AFILE') RIDFLD(WS-USER-ID)
+         FROM (USER-RECORD)
+         RESP(WS-RESP-CODE)
+     END-EXEC
+     EVALUATE WS-RESP-CODE
+         WHEN DFHRESP(NORMAL)
+            MOVE 'ADD SUCCESSFUL' TO MSGO
+         WHEN OTHER
+            MOVE 'ADD NOT SUCCESSFUL' TO MSGO
+     END-EVALUATE
+     SET PROCESS-KEY TO TRUE
+     MOVE WS-USER-ID TO ID1O.
+
+ UPDATE-PARA.
+      ADD 1 TO WS-SUB
+         IF WS-SUB < 13
+             MOVE 'UPDATE          ' TO WS-TAB(WS-SUB)
+         END-IF.
+     PERFORM RECEIVE-MAP2
+     PERFORM VALIDATE-PARA
+     IF VALID-DATA
+        PERFORM REWRITE-PARA
+     END-IF.
+
+ REWRITE-PARA.
+      ADD 1 TO WS-SUB
+         IF WS-SUB < 13
+             MOVE 'REWRITE         ' TO WS-TAB(WS-SUB)
+         END-IF.
+         MOVE ID1I TO WS-USER-ID
+     EXEC CICS READ
+         FILE('P26AFILE') RIDFLD(WS-USER-ID)
+         INTO(USER-RECORD) RESP(WS-RESP-CODE)
+         UPDATE
+     END-EXEC
+     EVALUATE WS-RESP-CODE
+         WHEN DFHRESP(NORMAL)
+            PERFORM MOVE-PARA
+            EXEC CICS REWRITE
+                FILE('P26AFILE')
+                FROM(USER-RECORD)
+                RESP(WS-RESP-CODE1)
+            END-EXEC
+            EVALUATE WS-RESP-CODE1
+              WHEN DFHRESP(NORMAL)
+                 MOVE 'UPDATE SUCCESSFUL' TO MSGO
+              WHEN OTHER
+                 MOVE 'UPDATE NOT SUCCESSFUL' TO MSGO
+            END-EVALUATE
+         WHEN OTHER
+            MOVE 'ERROR PROCESSING FILE' TO MSGO
+     END-EVALUATE
+     SET PROCESS-KEY TO TRUE
+     MOVE WS-USER-ID TO ID1O.
+
+ VALIDATE-PARA.
+      ADD 1 TO WS-SUB
+         IF WS-SUB < 13
+             MOVE 'VALIDATE        ' TO WS-TAB(WS-SUB)
+         END-IF.
+         IF USER-NAME = SPACES OR ZERO
+             MOVE -1 TO NAMEL.
+         IF USER-LOC = SPACES OR ZERO
+             MOVE -1 TO LOCL.
+         IF USER-DOB = SPACES OR ZERO
+             MOVE -1 TO DOBDDL.
+         IF USER-TECH = SPACES OR ZERO
+             MOVE -1 TO TECHL.
+         IF USER-EARN = ZERO
+             MOVE -1 TO EARNRSL.
+         IF USER-DEDN = ZERO
+             MOVE -1 TO DEDNRSL.
+     MOVE 'Y' TO WS-VALID-FLAG.
+
+ MOVE-PARA.
+     ADD 1 TO WS-SUB
+         IF WS-SUB < 13
+             MOVE 'MOVE-PARA       ' TO WS-TAB(WS-SUB)
+         END-IF.
+     MOVE WS-USER-ID             TO USER-ID
+     MOVE NAMEI                 TO USER-NAME
+     MOVE LOCI                  TO USER-LOC
+     MOVE TECHI                 TO USER-TECH
+     MOVE DOBDDI                TO USER-DOB(7:2)
+     MOVE DOBMMI                TO USER-DOB(5:2)
+     MOVE DOBYYI                TO USER-DOB(1:4)
+     MOVE EARNRSI               TO WS-RS
+     MOVE EARNPSI               TO WS-PS
+     MOVE WS-AMOUNT             TO USER-EARN
+     MOVE DEDNRSI               TO WS-RS
+     MOVE DEDNPSI               TO WS-PS
+     MOVE WS-AMOUNT             TO USER-DEDN.
+
+ DATE-TIME-PARA.
+     ADD 1 TO WS-SUB
+         IF WS-SUB < 13
+             MOVE 'DATE-TIME       ' TO WS-TAB(WS-SUB)
+         END-IF.
+     EXEC CICS ASKTIME
+         ABSTIME(WS-DATE-TIME)
+     END-EXEC
+     EXEC CICS FORMATTIME
+         ABSTIME(WS-DATE-TIME)
+         DDMMYYYY(DATE1O)
+         DATESEP
+         TIME(TIME1O)
+         TIMESEP
+     END-EXEC
+     MOVE DATE1O TO DATE2O
+     MOVE TIME1O TO TIME2O.
